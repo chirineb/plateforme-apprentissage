@@ -10,7 +10,6 @@ Une plateforme d'apprentissage en ligne développée avec **FastAPI** pour le ba
 - **Frontend** : React, Vite, TailwindCSS  
 - **Base de données** : PostgreSQL  
 - **Authentification** : JWT / systèmes d'inscription et login  
-- **Déploiement** : Local / Docker (optionnel si tu ajoutes)
 
 ---
 
@@ -20,15 +19,7 @@ Une plateforme d'apprentissage en ligne développée avec **FastAPI** pour le ba
 - Authentification et autorisation  
 - Tableau de bord personnalisé  
 - Gestion des cours et modules  
-- Chatbot pour assistance aux étudiants  
+- Chatbot intelligent intégré avec Ollama
 - Pages Frontend modernes et réactives avec TailwindCSS  
 
----
 
-## ⚙️ Installation
-
-### Backend (FastAPI)
-
-1. Aller dans le dossier backend :  
-```bash
-cd fastapi_project
