@@ -1,32 +1,21 @@
 import React from "react";
-import logo from "../assets/logo.png"; // ton logo dans src/assets/
+import logo from "../assets/EdiBoost.png";
 
 export default function Sidebar() {
   return (
-    <aside className="w-60 bg-blue-700 text-white flex flex-col p-4 items-start">
-      {/* Logo en haut à gauche */}
-      {/* <div className="mb-10 flex items-center">
+    <aside className="w-60 bg-blue-700 text-white flex flex-col p-5">
+      {/* Logo en haut */}
+      <div className="flex flex-col items-center mb-8">
         <img
           src={logo}
-          alt="Logo"
-          className="w-10 h-10 object-contain"
-          style={{
-            width: "100px",
-            height: "100px",
-            marginTop: "0",
-            marginLeft: "0",
-          }}
+          alt="EDIBoost Logo"
+          className="w-30 h-30 rounded-full mb-3"
         />
-        <h2 className="text-lg font-semibold ml-3">E-Learn</h2>
-      </div> */}
-      <img 
-      src={logo}
-      alt="EDIBoost Logo" 
-      className="w-12 h-12 object-contain"  />          
-     
+        <h2 className="text-lg font-bold">EDIBoost</h2>
+      </div>
 
       {/* Liens de navigation */}
-      <nav className="flex flex-col gap-2 w-full">
+      <nav className="flex flex-col gap-3 w-full">
         <a href="/dashboard" className="px-3 py-2 rounded hover:bg-blue-600 w-full">
           🏠 Dashboard
         </a>

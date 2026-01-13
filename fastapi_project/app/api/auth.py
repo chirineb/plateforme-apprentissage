@@ -15,7 +15,7 @@ from app.models.user import User
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+#pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT config
 SECRET_KEY = "supersecretkey"  
@@ -25,19 +25,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-# Verify password
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
 
-
-# Hash password
-def get_password_hash(password: str) -> str:
-    """Hash password with bcrypt, ensuring it's within 72 bytes limit"""
-    # Encode to bytes first, then truncate to 72 bytes, then decode back
-    password_bytes = password.encode('utf-8')[:72]
-    truncated_password = password_bytes.decode('utf-8', errors='ignore')
-    return pwd_context.hash(truncated_password)
-
+def verify_password(plain_password: str, db_password: str) -> bool:
+    return plain_password == db_password
 
 # Create access token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -69,7 +59,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     return user
 
 
-# 🟢 Register
+# Register
 @router.post("/register", response_model=schemas.UserOut)
 async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
     # Vérifier si l'email existe déjà
@@ -92,17 +82,18 @@ async def register(user: schemas.UserCreate, db: AsyncSession = Depends(get_db))
     return user_out
 
 
-# 🔵 Login
+# Login
 @router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     # form_data.username contient l'email dans notre cas
     user = await user_crud.get_user_by_email(db, form_data.username)
     
-    if not user or not user_crud.verify_password(form_data.password, user.hashed_password):
+    #if not user or not user_crud.verify_password(form_data.password, user.hashed_password):
+    if not user or not user_crud.verify_password(form_data.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     access_token = create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "role": user.role.value}
 
 
 # 🟣 Protected route example
@@ -120,3 +111,6 @@ def verify_role(required_roles: list[str]):
             )
         return current_user
     return role_checker
+
+
+

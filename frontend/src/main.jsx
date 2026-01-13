@@ -1,21 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import App from "./App.jsx";
-import Courses from "./pages/Courses.jsx";
-import Register from "./pages/Register.jsx";
-import Login from "./pages/Login.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
 import "./index.css";
+import './App.css';
+import App from "./App.jsx";
+import { BrowserRouter } from "react-router-dom";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<App />} />
-      <Route path="/courses" element={<Courses />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-    </Routes>
-  </BrowserRouter>
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
 );
+ 

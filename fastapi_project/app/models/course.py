@@ -18,6 +18,7 @@ class Course(Base):
     # relations
     owner = relationship("User", back_populates="courses")
     pdfs = relationship("PDF", back_populates="course", cascade="all, delete-orphan")
+
     #videos = relationship("Video", back_populates="course", cascade="all, delete-orphan")
     enrollments = relationship("Enrollment", back_populates="course", cascade="all, delete-orphan")
     #certificates = relationship("Certificate", back_populates="course", cascade="all, delete-orphan")

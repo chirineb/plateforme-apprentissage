@@ -5,6 +5,10 @@ from typing import List
 from app.db.database import get_db
 from app.schemas import schemas
 from app.crud.crud import user_crud
+from app.schemas.schemas import LevelEnum
+from app.models.user import User, RoleEnum
+from app.core.permissions import allow_roles
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -32,6 +36,29 @@ async def update_user(user_id: int, user_update: schemas.UserUpdate, db: AsyncSe
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+#endpoint pour modifier le niveau d’un utilisateur
+@router.put("/{user_id}/level")
+async def update_user_level(
+    user_id: int,
+    level: LevelEnum,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(allow_roles([RoleEnum.admin, RoleEnum.teacher]))
+):
+    # Vérifier si l'utilisateur existe et est étudiant
+    student = await user_crud.get_user_by_id(db, user_id)
+    if not student or student.role != RoleEnum.student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Mettre à jour le niveau
+    student.level = level
+    await db.commit()
+    await db.refresh(student)
+
+    return {
+        "message": f"Level updated by {current_user.role}",
+        "level": student.level
+    }
 
 @router.delete("/{user_id}", response_model=schemas.UserOut)
 async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):

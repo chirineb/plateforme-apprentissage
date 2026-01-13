@@ -1,17 +1,19 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from passlib.context import CryptContext
+from sqlalchemy.orm import selectinload
 from app.models.user import User
+from app.models.user import RoleEnum
 from app.models.course import Course
 from app.models.pdf import PDF
 from app.models.enrollment import Enrollment
 from app.schemas.schemas import UserCreate, UserUpdate, CourseCreate, CourseUpdate
+from app.models.quiz import Quiz, QuizOption, QuizQuestion, QuizResult
+from app.schemas.schemas import QuizCreate, QuizAnswer, QuizOut
+from sqlalchemy import and_
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 class UserCRUD:
-    def __init__(self):
-        self.pwd_context = pwd_context
 
     async def get_user_by_email(self, db: AsyncSession, email: str) -> User | None:
         result = await db.execute(select(User).filter(User.email == email))
@@ -30,12 +32,12 @@ class UserCRUD:
         return result.scalars().all()
 
     async def create_user(self, db: AsyncSession, user: UserCreate) -> User:
-        hashed_password = self._hash_password(user.password)
         db_user = User(
             username=user.username,
             email=user.email,
-            hashed_password=hashed_password,
+            password=user.password,  
             role=user.role,
+            level=user.level,
             is_active=True
         )
         db.add(db_user)
@@ -46,19 +48,12 @@ class UserCRUD:
     async def update_user(self, db: AsyncSession, user_id: int, user_update: UserUpdate) -> User | None:
         result = await db.execute(select(User).filter(User.id == user_id))
         db_user = result.scalars().first()
-        
         if not db_user:
             return None
 
         update_data = user_update.dict(exclude_unset=True)
-        
-        # Handle password hashing separately
-        if 'password' in update_data:
-            update_data['hashed_password'] = self._hash_password(update_data.pop('password'))
-        
         for field, value in update_data.items():
-            setattr(db_user, field, value)
-
+            setattr(db_user, field, value)  # store plain password directly
         await db.commit()
         await db.refresh(db_user)
         return db_user
@@ -66,32 +61,21 @@ class UserCRUD:
     async def delete_user(self, db: AsyncSession, user_id: int) -> User | None:
         result = await db.execute(select(User).filter(User.id == user_id))
         db_user = result.scalars().first()
-        
         if not db_user:
             return None
-
         await db.delete(db_user)
         await db.commit()
         return db_user
 
-    def _hash_password(self, password: str) -> str:
-        """Hash password with bcrypt, ensuring it's within 72 bytes limit"""
-        # Encode to bytes first, then truncate to 72 bytes, then decode back
-        password_bytes = password.encode('utf-8')[:72]
-        truncated_password = password_bytes.decode('utf-8', errors='ignore')
-        return self.pwd_context.hash(truncated_password)
+    def verify_password(self, plain_password: str, db_password: str) -> bool:
+        """Compare plain password directly"""
+        return plain_password == db_password
 
-    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash"""
-        # Apply same truncation logic for verification
-        password_bytes = plain_password.encode('utf-8')[:72]
-        truncated_password = password_bytes.decode('utf-8', errors='ignore')
-        return self.pwd_context.verify(truncated_password, hashed_password)
 
-# Create a singleton instance
 user_crud = UserCRUD()
 
-#courses
+# Courses CRUD
+
 class CourseCRUD:
     async def create_course(self, db: AsyncSession, course: CourseCreate, teacher_id: int):
         db_course = Course(
@@ -130,9 +114,11 @@ class CourseCRUD:
         await db.commit()
         return course
 
+
 course_crud = CourseCRUD()
 
-#pdfs 
+# PDFs CRUD
+
 class PDFCRUD:
     async def create_pdf(self, db: AsyncSession, pdf_data, course_id: int):
         db_pdf = PDF(**pdf_data.dict(), course_id=course_id)
@@ -154,9 +140,12 @@ class PDFCRUD:
         await db.commit()
         return pdf
 
+
 pdf_crud = PDFCRUD()
 
-#enrollement 
+
+# Enrollment CRUD
+
 class EnrollmentCRUD:
     async def enroll_student(self, db: AsyncSession, student_id: int, course_id: int):
         enrollment = Enrollment(student_id=student_id, course_id=course_id)
@@ -170,3 +159,205 @@ class EnrollmentCRUD:
             select(Enrollment).filter(Enrollment.student_id == student_id)
         )
         return result.scalars().all()
+
+
+enrollment_crud = EnrollmentCRUD()
+
+#quiz crud
+
+PASS_SCORE = 70  
+
+class QuizCRUD:
+    # Création d'un quiz (prof/admin)
+
+    async def create_quiz(self, db: AsyncSession, quiz_data: QuizCreate, user_id: int, user_role: RoleEnum):
+        course_res = await db.execute(
+            select(Course).where(Course.id == quiz_data.course_id)
+        )
+        course = course_res.scalars().first()
+
+        if not course:
+            raise ValueError("Course not found")
+
+        # Vérification des permissions
+        if user_role == RoleEnum.teacher and course.teacher_id != user_id:
+            raise ValueError("Not authorized to create quiz for this course")
+
+        # Créer le quiz
+        quiz = Quiz(
+            title=quiz_data.title,
+            course_id=quiz_data.course_id
+        )
+        db.add(quiz)
+        await db.commit()
+        await db.refresh(quiz)
+
+        # Créer questions + options
+        for q in quiz_data.questions:
+            question = QuizQuestion(
+                quiz_id=quiz.id,
+                question=q.question
+            )
+            db.add(question)
+            await db.flush()  # pour récupérer question.id
+
+            for opt in q.options:
+                option = QuizOption(
+                    question_id=question.id,
+                    text=opt.text,
+                    is_correct=opt.is_correct
+                )
+                db.add(option)
+
+        await db.commit()
+        return quiz
+
+    
+    async def get_quiz_by_id(self, db: AsyncSession, quiz_id: int):
+        result = await db.execute(
+            select(Quiz)
+            .where(Quiz.id == quiz_id)
+            .options(
+                selectinload(Quiz.questions)
+                .selectinload(QuizQuestion.options)
+            )
+        )
+        quiz = result.scalars().first()
+        return quiz
+
+
+    # SUBMIT QUIZ (STUDENT)
+    
+    async def submit_quiz(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        quiz_id: int,
+        answers: list[QuizAnswer]
+    ):
+        # Vérifier si déjà validé
+        passed_res = await db.execute(
+            select(QuizResult).where(
+                and_(
+                    QuizResult.user_id == user_id,
+                    QuizResult.quiz_id == quiz_id,
+                    QuizResult.passed == True
+                )
+            )
+        )
+        passed_result = passed_res.scalars().first()
+
+        if passed_result:
+            return {
+                "score": passed_result.score,
+                "total": passed_result.total,
+                "percentage": passed_result.percentage,
+                "passed": True,
+                "can_retry": False
+            }
+
+        # Charger quiz + questions + options
+        quiz_res = await db.execute(
+            select(Quiz)
+            .where(Quiz.id == quiz_id)
+            .options(
+                selectinload(Quiz.questions)
+                .selectinload(QuizQuestion.options)
+            )
+        )
+        quiz = quiz_res.scalars().first()
+
+        if not quiz:
+            raise ValueError("Quiz not found")
+
+        total_questions = len(quiz.questions)
+        if total_questions == 0:
+            raise ValueError("Quiz has no questions")
+
+
+        # Calcul du score (SÉCURISÉ)
+        score = 0
+        answered_questions = set()
+
+        for answer in answers:
+            option_res = await db.execute(
+                select(QuizOption)
+                .join(QuizQuestion)
+                .where(
+                    QuizOption.id == answer.option_id,
+                    QuizQuestion.quiz_id == quiz_id
+                )
+            )
+            option = option_res.scalars().first()
+
+            if not option:
+                continue  # option invalide
+
+            question_id = option.question_id
+            if question_id in answered_questions:
+                continue  # déjà répondu
+
+            answered_questions.add(question_id)
+
+            if option.is_correct:
+                score += 1
+
+        percentage = round((score / total_questions) * 100, 2)
+        passed = percentage >= PASS_SCORE
+
+        # Sauvegarder le résultat
+        quiz_result = QuizResult(
+            user_id=user_id,
+            quiz_id=quiz_id,
+            score=score,
+            total=total_questions,
+            percentage=percentage,
+            passed=passed
+        )
+        db.add(quiz_result)
+        await db.commit()
+
+        # Mettre à jour le niveau utilisateur
+        await self.update_user_level(db, user_id)
+
+        return {
+            "score": score,
+            "total": total_questions,
+            "percentage": percentage,
+            "passed": passed,
+            "can_retry": not passed
+        }
+
+    # UPDATE USER LEVEL
+
+    async def update_user_level(self, db: AsyncSession, user_id: int):
+        res = await db.execute(
+            select(QuizResult).where(QuizResult.user_id == user_id)
+        )
+        results = res.scalars().all()
+
+        if not results:
+            return
+
+        avg = sum(r.percentage for r in results) / len(results)
+
+        user_res = await db.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = user_res.scalars().first()
+
+        if not user:
+            return
+
+        if avg >= 80:
+            user.level = "advanced"
+        elif avg >= 50:
+            user.level = "intermediate"
+        else:
+            user.level = "beginner"
+        await db.commit()
+
+quiz_crud = QuizCRUD()
+
+
+

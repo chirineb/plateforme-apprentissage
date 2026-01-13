@@ -11,47 +11,56 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar />
+
       <div className="flex-1 flex flex-col">
         <Navbar onLogout={handleLogout} />
-        <main className="p-6">
-          <h1 className="text-2xl font-bold mb-4">Tableau de bord</h1>
 
-          {/* Search / summary */}
-          <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded shadow">
-              <h3 className="font-semibold">Mes cours</h3>
+        <main className="p-8">
+          <h1 className="text-3xl font-bold mb-6 text-center text-gray-900">
+            Tableau de bord
+          </h1>
+
+          {/* Summary Cards */}
+          <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-5 rounded-lg shadow">
+              <h3 className="font-semibold text-lg text-blue-800">Mes cours</h3>
               <p className="text-sm text-gray-600">Accès rapide à vos cours</p>
             </div>
-            <div className="bg-white p-4 rounded shadow">
-              <h3 className="font-semibold">Progression</h3>
+            <div className="bg-white p-5 rounded-lg shadow">
+              <h3 className="font-semibold text-lg text-blue-800">Progression</h3>
               <p className="text-sm text-gray-600">Statistiques d'apprentissage</p>
             </div>
-            <div className="bg-white p-4 rounded shadow">
-              <h3 className="font-semibold">Messages</h3>
+            <div className="bg-white p-5 rounded-lg shadow">
+              <h3 className="font-semibold text-lg text-blue-800">Messages</h3>
               <p className="text-sm text-gray-600">Questions et notifications</p>
             </div>
           </div>
 
-          {/* Example courses list */}
+          {/* Courses Section */}
           <section>
-            <h2 className="text-xl font-semibold mb-3">Cours disponibles</h2>
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">
+              Cours disponibles
+            </h2>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* example card */}
-              <article className="bg-white p-4 rounded shadow">
-                <h3 className="font-bold">Robotique 101</h3>
-                <p className="text-sm text-gray-600">Introduction aux robots</p>
-                <button className="mt-3 bg-blue-600 text-white px-3 py-1 rounded">Voir</button>
-              </article>
-              <article className="bg-white p-4 rounded shadow">
-                <h3 className="font-bold">IA pour débutants</h3>
-                <p className="text-sm text-gray-600">Bases du Machine Learning</p>
-                <button className="mt-3 bg-blue-600 text-white px-3 py-1 rounded">Voir</button>
-              </article>
-              <article className="bg-white p-4 rounded shadow">
-                <h3 className="font-bold">Automatisation</h3>
-                <p className="text-sm text-gray-600">PLC & capteurs</p>
-                <button className="mt-3 bg-blue-600 text-white px-3 py-1 rounded">Voir</button>
-              </article>
+              {[
+                { title: "Robotique 101", desc: "Introduction aux robots" },
+                { title: "IA pour débutants", desc: "Bases du Machine Learning" },
+                { title: "Automatisation", desc: "PLC & capteurs" },
+              ].map((course, index) => (
+                <article
+                  key={index}
+                  className="bg-white p-5 rounded-lg shadow hover:shadow-lg transition"
+                >
+                  <h3 className="font-bold text-lg text-blue-800">
+                    {course.title}
+                  </h3>
+                  <p className="text-sm text-gray-600">{course.desc}</p>
+                  <button className="mt-3 bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800">
+                    Voir
+                  </button>
+                </article>
+              ))}
             </div>
           </section>
         </main>

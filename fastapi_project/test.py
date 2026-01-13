@@ -1,7 +1,5 @@
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-password = "testpassword"
-hashed = pwd_context.hash(password)
-print("Hashed password:", hashed)
+if __name__ == "__main__":
+    user_name = "Chirine"
+    user_message = "Explique les réseaux neuronaux à un débutant."
+    response = chat_with_user(user_name, user_message)
+    print(response)
